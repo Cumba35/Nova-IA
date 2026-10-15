@@ -1,0 +1,61 @@
+
+name: Compilar Nova AI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar herramientas Android
+        run: |
+          sdkmanager "platforms;android-35"
+          sdkmanager "build-tools;35.0.0"
+          sdkmanager "ndk;26.3.11579264"
+          sdkmanager "cmake;3.22.1"
+
+      - name: Descargar llama.cpp
+        run: |
+          git clone --depth 1 \
+            https://github.com/ggml-org/llama.cpp.git \
+            app/src/main/cpp/llama.cpp
+
+      - name: Crear Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.7
+
+      - name: Compilar APK
+        run: ./gradlew assembleDebug
+        env:
+          ANDROID_NDK_VERSION: 26.3.11579264
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nova-AI-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
